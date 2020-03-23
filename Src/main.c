@@ -34,7 +34,8 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+uint32_t string_size = 0;
+uint32_t string_length = 0;
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -50,7 +51,7 @@ BtModuleTypeDef bt;
 
 BtTxMsgTypeDef TxMes;
 BtRxMsgTypeDef RxMes;
-
+uint8_t len = 6;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -73,7 +74,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 }
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-		HAL_UART_Receive_IT(&huart2, RxMes.short_resp, sizeof(RxMes.long_resp));
+		HAL_UART_Receive_IT(&huart2, RxMes.short_resp, len);
 }
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
@@ -92,6 +93,7 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 int main(void)
 {
   /* USER CODE BEGIN 1 */
+	
 	strcpy(TxMes.On, "COM+PWOS\r\n");
 	strcpy(TxMes.Off, "COM+PWDS\r\n");
 	bt.pBtTxMsg = &TxMes;
@@ -119,23 +121,25 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
-	HAL_UART_Receive_IT(&huart2, RxMes.short_resp, sizeof(RxMes.long_resp));
+	HAL_UART_Receive_IT(&huart2, RxMes.short_resp, len);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+	string_size = sizeof(BT_ON);
+	string_length = strlen(BT_ON);
   while (1)
   {
 		if (bt.command == toOn)
 		{
 			//HAL_UART_Transmit(&huart2, (uint8_t*)TxMes.On, sizeof(TxMes.On), 100);
-			HAL_UART_Transmit(&huart2, (uint8_t*)BT_ON, sizeof(TxMes.On), 100);
+			HAL_UART_Transmit(&huart2, (uint8_t*)BT_ON, strlen(BT_ON), 100);
 			bt.command = toNop;
 		}
 		else if (bt.command == toOff)
 		{
 			//HAL_UART_Transmit(&huart2, (uint8_t*)TxMes.Off, sizeof(TxMes.Off), 100);
-			HAL_UART_Transmit(&huart2, (uint8_t*)BT_OFF, sizeof(TxMes.On), 100);
+			HAL_UART_Transmit(&huart2, (uint8_t*)BT_OFF, strlen(BT_OFF), 100);
 			bt.command = toNop;
 		}
     /* USER CODE END WHILE */

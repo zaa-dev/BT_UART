@@ -53,7 +53,8 @@ typedef enum
 typedef struct
 {
   uint8_t short_resp[8];     
-	uint8_t long_resp[32];   
+	uint8_t long_resp[32]; 
+	
 
 }BtRxMsgTypeDef;
 typedef struct
