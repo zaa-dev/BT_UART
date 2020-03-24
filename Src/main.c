@@ -74,7 +74,23 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 }
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-		HAL_UART_Receive_IT(&huart2, RxMes.short_resp, len);
+	static uint32_t rx_counter = 0;
+		//HAL_UART_Receive_IT(&huart2, RxMes.short_resp, len);
+		HAL_UART_Receive_IT(&huart2, &bt.var, 1);
+	if ( (bt.var == 'B')||(bt.var == 'S')||(bt.var == 'O')||(bt.var == 'C') )
+	{
+		for(uint8_t i = 0; i < 10; i++)
+		{ bt.rx_buf[i] = 0; }
+	}
+	if (bt.var != 0x0A)
+	{
+		bt.rx_buf[rx_counter++] = bt.var;
+	}
+	else if (bt.var == 0x0A)
+	{
+		rx_counter = 0;
+	}
+	
 }
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
@@ -121,24 +137,28 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
-	HAL_UART_Receive_IT(&huart2, RxMes.short_resp, len);
+	//HAL_UART_Receive_IT(&huart2, RxMes.short_resp, len);
+	HAL_UART_Receive_IT(&huart2, &bt.var, 1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 	string_size = sizeof(BT_ON);
 	string_length = strlen(BT_ON);
+	bt.command_buf[0] = toOn;
+	bt.command_buf[1] = toOff;
+	bt.command_buf[2] = toNop;
   while (1)
   {
 		if (bt.command == toOn)
 		{
-			//HAL_UART_Transmit(&huart2, (uint8_t*)TxMes.On, sizeof(TxMes.On), 100);
+			
 			HAL_UART_Transmit(&huart2, (uint8_t*)BT_ON, strlen(BT_ON), 100);
 			bt.command = toNop;
 		}
 		else if (bt.command == toOff)
 		{
-			//HAL_UART_Transmit(&huart2, (uint8_t*)TxMes.Off, sizeof(TxMes.Off), 100);
+		
 			HAL_UART_Transmit(&huart2, (uint8_t*)BT_OFF, strlen(BT_OFF), 100);
 			bt.command = toNop;
 		}

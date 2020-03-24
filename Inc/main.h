@@ -41,7 +41,15 @@ typedef enum
 {
 	toNop,
 	toOn,
-	toOff
+	toOff,
+	toVolUp,
+	toVolDn,
+	toShDn,
+	toBoot,
+	toAnswCall,
+	toHgUp,
+	toRefCall,
+	toRedial
 } BtCommandTypeDef;
 typedef enum
 {
@@ -66,7 +74,9 @@ typedef struct
 typedef struct
 {
 	BtCommandTypeDef command;
+	BtCommandTypeDef command_buf[8];
 	uint8_t var;
+	uint8_t rx_buf[32];
 	BtRxMsgTypeDef*            pBtRxMsg;     /*!< Pointer to receive structure  */
 	BtTxMsgTypeDef*            pBtTxMsg;     /*!< Pointer to transmit structure  */
 } BtModuleTypeDef;
