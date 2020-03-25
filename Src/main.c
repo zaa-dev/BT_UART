@@ -29,13 +29,17 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-
+#include "bt_commands.h"
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 uint32_t string_size = 0;
 uint32_t string_length = 0;
+uint8_t cycleBuf_count = 0;
+char ar_commands[15][15];
+char strings[32];
+//extern char *c;
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -52,6 +56,7 @@ BtModuleTypeDef bt;
 BtTxMsgTypeDef TxMes;
 BtRxMsgTypeDef RxMes;
 uint8_t len = 6;
+RingBufTypeDef ringBuf_btCommands;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -77,7 +82,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	static uint32_t rx_counter = 0;
 		//HAL_UART_Receive_IT(&huart2, RxMes.short_resp, len);
 		HAL_UART_Receive_IT(&huart2, &bt.var, 1);
-	if ( (bt.var == 'B')||(bt.var == 'S')||(bt.var == 'O')||(bt.var == 'C') )
+	if ( (bt.var == 'B')||(bt.var == 'S')||(bt.var == 'O') )
 	{
 		for(uint8_t i = 0; i < 10; i++)
 		{ bt.rx_buf[i] = 0; }
@@ -100,6 +105,37 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 {
 
 }
+
+void RING_Put(BtCommandTypeDef command, RingBufTypeDef* buf)
+{
+		buf->buffer[buf->idxIn++]= command;  
+    if (buf->idxIn >= CYCLE_BUF_SIZE_x) buf->idxIn = 0;
+}
+BtCommandTypeDef RING_Pop(RingBufTypeDef* buf)
+{
+	BtCommandTypeDef retval = buf->buffer[buf->idxOut++];
+	if (buf->idxOut >= CYCLE_BUF_SIZE_x) buf->idxOut = 0;
+	return retval;
+}
+uint8_t RING_GetCount(RingBufTypeDef* buf)
+{
+    uint8_t retval = 0;
+    if (buf->idxIn < buf->idxOut) retval = CYCLE_BUF_SIZE_x + buf->idxIn - buf->idxOut;
+    else retval = buf->idxIn - buf->idxOut;
+    return retval;
+}
+void RING_Clear(RingBufTypeDef* buf)
+{
+    buf->idxIn = 0;
+    buf->idxOut = 0;
+}/*
+void RING_Init(RingBufTypeDef* buf)
+{
+    buf->size = size;
+    buf->buffer = test_array[][];//(uint8_t*) malloc(size);
+    RING_Clear(buf);
+}*/
+
 /* USER CODE END 0 */
 
 /**
@@ -109,11 +145,15 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-	
-	strcpy(TxMes.On, "COM+PWOS\r\n");
-	strcpy(TxMes.Off, "COM+PWDS\r\n");
+	//ar_commands[15][15];
+	strcpy(&ar_commands[toOn][0], "COM+PWOS\r\n");
+	strcpy(&ar_commands[toOff][0], "COM+PWDS\r\n");
+	//strcpy(TxMes.On, "COM+PWOS\r\n");
+	//strcpy(TxMes.Off, "COM+PWDS\r\n");
 	bt.pBtTxMsg = &TxMes;
 	bt.pBtRxMsg = &RxMes;
+	//strings[0] = c[0];
+	
   /* USER CODE END 1 */
   
 
@@ -144,22 +184,46 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 	string_size = sizeof(BT_ON);
-	string_length = strlen(BT_ON);
-	bt.command_buf[0] = toOn;
-	bt.command_buf[1] = toOff;
-	bt.command_buf[2] = toNop;
+	string_length = strlen(&bt_commands[toOn][0]);
+	bt.command = toOn;
+	RING_Put(toVolUp, &ringBuf_btCommands);
+
+	RING_Put(toVolDn, &ringBuf_btCommands);
+	
+	RING_Put(toRedial, &ringBuf_btCommands);
+	
+	RING_Put(toRefCall, &ringBuf_btCommands);
+	
+	cycleBuf_count = RING_GetCount(&ringBuf_btCommands);
+	if (cycleBuf_count) {bt.command = RING_Pop(&ringBuf_btCommands);}
+	cycleBuf_count = RING_GetCount(&ringBuf_btCommands);
+	bt.command = RING_Pop(&ringBuf_btCommands);
+	cycleBuf_count = RING_GetCount(&ringBuf_btCommands);
+	bt.command = RING_Pop(&ringBuf_btCommands);
+	cycleBuf_count = RING_GetCount(&ringBuf_btCommands);
+	bt.command = RING_Pop(&ringBuf_btCommands);
+	cycleBuf_count = RING_GetCount(&ringBuf_btCommands);
+	
   while (1)
   {
-		if (bt.command == toOn)
+		/*if (bt.command == toOn)
 		{
 			
-			HAL_UART_Transmit(&huart2, (uint8_t*)BT_ON, strlen(BT_ON), 100);
+			//HAL_UART_Transmit(&huart2, (uint8_t*)BT_ON, strlen(BT_ON), 100);
+			HAL_UART_Transmit(&huart2, (uint8_t*)&ar_commands[toOn][0], strlen(&ar_commands[toOn][0]), 100);
 			bt.command = toNop;
 		}
 		else if (bt.command == toOff)
 		{
 		
 			HAL_UART_Transmit(&huart2, (uint8_t*)BT_OFF, strlen(BT_OFF), 100);
+			bt.command = toNop;
+		}*/
+		
+		if (bt.command != toNop)
+		{
+			//HAL_UART_Transmit(&huart2, (uint8_t*)&ar_commands[bt.command][0], strlen(&ar_commands[bt.command][0]), 100);
+			HAL_UART_Transmit(&huart2, (uint8_t*)&bt_commands[bt.command][0], strlen(&bt_commands[bt.command][0]), 100);
 			bt.command = toNop;
 		}
     /* USER CODE END WHILE */

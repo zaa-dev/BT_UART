@@ -32,7 +32,8 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#define CYCLE_BUF_SIZE_x 8
+//#define CYCLE_BUF_SIZE_y 4
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -42,13 +43,18 @@ typedef enum
 	toNop,
 	toOn,
 	toOff,
+	toRst,
 	toVolUp,
 	toVolDn,
-	toShDn,
-	toBoot,
+	toVolQ,
+	toModeBt,
+	toModeQ,
+	toPair,
+	toConLst,
+	toDiscon,
 	toAnswCall,
-	toHgUp,
 	toRefCall,
+	toHgUp,
 	toRedial
 } BtCommandTypeDef;
 typedef enum
@@ -76,7 +82,7 @@ typedef struct
 	BtCommandTypeDef command;
 	BtCommandTypeDef command_buf[8];
 	uint8_t var;
-	uint8_t rx_buf[32];
+	uint8_t rx_buf[10];
 	BtRxMsgTypeDef*            pBtRxMsg;     /*!< Pointer to receive structure  */
 	BtTxMsgTypeDef*            pBtTxMsg;     /*!< Pointer to transmit structure  */
 } BtModuleTypeDef;
@@ -118,7 +124,24 @@ void Error_Handler(void);
 #define BT_REF_CALL 		"BT+CJ\r\n"
 #define BT_HANGUP_CALL	"BT+CE\r\n"
 #define BT_REDIAL		"BT+CR\r\n"
+//char *c[]={"COM+PWOS\r\n","COM+PWDS\r\n","COM+REBOOT\r\n"};
+static const char bt_commands [][15] = {
+{0},BT_ON,	BT_OFF,	BT_RES, BT_VOL_P, BT_VOL_M, BT_VOL_Q, BT_MODE_BT, BT_MODE_Q, BT_PAIR, BT_CON_LAST, BT_DISCON, BT_ANSW_CALL, BT_REF_CALL, BT_HANGUP_CALL, BT_REDIAL
+};
 
+typedef struct
+{
+	BtCommandTypeDef buffer[CYCLE_BUF_SIZE_x];
+	uint16_t idxIn;
+  uint16_t idxOut;
+} RingBufTypeDef;
+
+void RING_Put(BtCommandTypeDef btCommand/*uint8_t* array*/, RingBufTypeDef* buf);
+BtCommandTypeDef RING_Pop(RingBufTypeDef *buf);
+uint8_t RING_GetCount(RingBufTypeDef *buf);
+int32_t RING_ShowSymbol(uint16_t symbolNumber ,RingBufTypeDef *buf);
+void RING_Clear(RingBufTypeDef* buf);
+void RING_Init(RingBufTypeDef *buf);
 
 /* USER CODE END Private defines */
 
