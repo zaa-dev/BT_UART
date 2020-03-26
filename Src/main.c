@@ -37,7 +37,7 @@
 uint32_t string_size = 0;
 uint32_t string_length = 0;
 uint8_t cycleBuf_count = 0;
-char ar_commands[15][15];
+//char ar_commands[15][15];
 char strings[32];
 //extern char *c;
 /* USER CODE END PD */
@@ -146,8 +146,8 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
 	//ar_commands[15][15];
-	strcpy(&ar_commands[toOn][0], "COM+PWOS\r\n");
-	strcpy(&ar_commands[toOff][0], "COM+PWDS\r\n");
+	//strcpy(&ar_commands[toOn][0], "COM+PWOS\r\n");
+	//strcpy(&ar_commands[toOff][0], "COM+PWDS\r\n");
 	//strcpy(TxMes.On, "COM+PWOS\r\n");
 	//strcpy(TxMes.Off, "COM+PWDS\r\n");
 	bt.pBtTxMsg = &TxMes;
@@ -185,7 +185,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
 	string_size = sizeof(BT_ON);
 	string_length = strlen(&bt_commands[toOn][0]);
-	bt.command = toOn;
+	//bt.command = toOn;
 	RING_Put(toVolUp, &ringBuf_btCommands);
 
 	RING_Put(toVolDn, &ringBuf_btCommands);
@@ -193,7 +193,7 @@ int main(void)
 	RING_Put(toRedial, &ringBuf_btCommands);
 	
 	RING_Put(toRefCall, &ringBuf_btCommands);
-	
+	/*
 	cycleBuf_count = RING_GetCount(&ringBuf_btCommands);
 	if (cycleBuf_count) {bt.command = RING_Pop(&ringBuf_btCommands);}
 	cycleBuf_count = RING_GetCount(&ringBuf_btCommands);
@@ -203,7 +203,8 @@ int main(void)
 	cycleBuf_count = RING_GetCount(&ringBuf_btCommands);
 	bt.command = RING_Pop(&ringBuf_btCommands);
 	cycleBuf_count = RING_GetCount(&ringBuf_btCommands);
-	
+	*/
+	bt.ticks = HAL_GetTick();
   while (1)
   {
 		/*if (bt.command == toOn)
@@ -220,11 +221,18 @@ int main(void)
 			bt.command = toNop;
 		}*/
 		
-		if (bt.command != toNop)
+		//if (bt.command != toNop)
+		//{
+		if (HAL_GetTick() - bt.ticks > 100)
 		{
-			//HAL_UART_Transmit(&huart2, (uint8_t*)&ar_commands[bt.command][0], strlen(&ar_commands[bt.command][0]), 100);
-			HAL_UART_Transmit(&huart2, (uint8_t*)&bt_commands[bt.command][0], strlen(&bt_commands[bt.command][0]), 100);
-			bt.command = toNop;
+			bt.ticks = HAL_GetTick();
+			cycleBuf_count = RING_GetCount(&ringBuf_btCommands);
+			if (cycleBuf_count) 
+			{
+				bt.command = RING_Pop(&ringBuf_btCommands);
+				HAL_UART_Transmit(&huart2, (uint8_t*)&bt_commands[bt.command][0], strlen(&bt_commands[bt.command][0]), 100);
+				bt.command = toNop;
+			}
 		}
     /* USER CODE END WHILE */
 

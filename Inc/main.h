@@ -85,6 +85,7 @@ typedef struct
 	uint8_t rx_buf[10];
 	BtRxMsgTypeDef*            pBtRxMsg;     /*!< Pointer to receive structure  */
 	BtTxMsgTypeDef*            pBtTxMsg;     /*!< Pointer to transmit structure  */
+	uint32_t ticks;
 } BtModuleTypeDef;
 
 
