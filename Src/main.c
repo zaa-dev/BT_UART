@@ -57,6 +57,14 @@ BtTxMsgTypeDef TxMes;
 BtRxMsgTypeDef RxMes;
 uint8_t len = 6;
 RingBufTypeDef ringBuf_btCommands;
+typedef struct 
+{
+	uint8_t canRx;
+	uint8_t btRx;
+}FlagTypeDef;
+FlagTypeDef flag;
+uint8_t muteOnDbg = 0;
+uint8_t muteOffDbg = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -82,7 +90,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	static uint32_t rx_counter = 0;
 		//HAL_UART_Receive_IT(&huart2, RxMes.short_resp, len);
 		HAL_UART_Receive_IT(&huart2, &bt.var, 1);
-	if ( (bt.var == 'B')||(bt.var == 'S')||(bt.var == 'O') )
+	if ( ((bt.var == 'B')||(bt.var == 'S')||(bt.var == 'O')) && bt.prVar!='C' )
 	{
 		for(uint8_t i = 0; i < 10; i++)
 		{ bt.rx_buf[i] = 0; }
@@ -94,8 +102,10 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	else if (bt.var == 0x0A)
 	{
 		rx_counter = 0;
+		flag.btRx = 1;
 	}
-	
+	//flag.btRx = 1;
+	bt.prVar = bt.var;
 }
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
@@ -135,6 +145,32 @@ void RING_Init(RingBufTypeDef* buf)
     buf->buffer = test_array[][];//(uint8_t*) malloc(size);
     RING_Clear(buf);
 }*/
+void bt_mute(uint8_t on, uint8_t *Vol)
+{
+	if (on)
+	{
+		HAL_UART_Transmit(&huart2, (uint8_t*)BT_VOLUME_QUERY, strlen(BT_VOLUME_QUERY), 100);
+		bt.ticks = HAL_GetTick();
+		while (!flag.btRx) 
+		{
+			if (HAL_GetTick() - bt.ticks > 100)
+			{
+				bt.err = 1;
+				break;
+			}
+		}
+		
+			flag.btRx = 0;
+			Vol[0] = bt.rx_buf[5];
+			Vol[1] = bt.rx_buf[6];
+		
+	}
+	else
+	{
+		uint8_t vol_com[9] = {'C', 'O', 'M', '+', 'V', Vol[0], Vol[1], '\r', '\n'};
+		HAL_UART_Transmit(&huart2, vol_com, strlen((const char*)vol_com), 100);
+	}
+}
 
 /* USER CODE END 0 */
 
@@ -186,24 +222,14 @@ int main(void)
 	string_size = sizeof(BT_ON);
 	string_length = strlen(&bt_commands[toOn][0]);
 	//bt.command = toOn;
-	RING_Put(toVolUp, &ringBuf_btCommands);
+	RING_Put(toNop, &ringBuf_btCommands);
 
-	RING_Put(toVolDn, &ringBuf_btCommands);
+	RING_Put(toNop, &ringBuf_btCommands);
 	
-	RING_Put(toRedial, &ringBuf_btCommands);
+	RING_Put(toNop, &ringBuf_btCommands);
 	
-	RING_Put(toRefCall, &ringBuf_btCommands);
-	/*
-	cycleBuf_count = RING_GetCount(&ringBuf_btCommands);
-	if (cycleBuf_count) {bt.command = RING_Pop(&ringBuf_btCommands);}
-	cycleBuf_count = RING_GetCount(&ringBuf_btCommands);
-	bt.command = RING_Pop(&ringBuf_btCommands);
-	cycleBuf_count = RING_GetCount(&ringBuf_btCommands);
-	bt.command = RING_Pop(&ringBuf_btCommands);
-	cycleBuf_count = RING_GetCount(&ringBuf_btCommands);
-	bt.command = RING_Pop(&ringBuf_btCommands);
-	cycleBuf_count = RING_GetCount(&ringBuf_btCommands);
-	*/
+	RING_Put(toNop, &ringBuf_btCommands);
+
 	bt.ticks = HAL_GetTick();
   while (1)
   {
@@ -223,6 +249,17 @@ int main(void)
 		
 		//if (bt.command != toNop)
 		//{
+		if (muteOnDbg)
+		{
+			muteOnDbg = 0;
+			bt_mute(1, bt.vol);
+		}
+		if (muteOffDbg)
+		{
+			muteOffDbg = 0;
+			bt_mute(0, bt.vol);
+		}
+		
 		if (HAL_GetTick() - bt.ticks > 100)
 		{
 			bt.ticks = HAL_GetTick();
@@ -230,7 +267,8 @@ int main(void)
 			if (cycleBuf_count) 
 			{
 				bt.command = RING_Pop(&ringBuf_btCommands);
-				HAL_UART_Transmit(&huart2, (uint8_t*)&bt_commands[bt.command][0], strlen(&bt_commands[bt.command][0]), 100);
+				if (bt.command != toNop)
+					HAL_UART_Transmit(&huart2, (uint8_t*)&bt_commands[bt.command][0], strlen(&bt_commands[bt.command][0]), 100);
 				bt.command = toNop;
 			}
 		}
